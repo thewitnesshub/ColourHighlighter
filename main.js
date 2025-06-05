@@ -153,6 +153,11 @@ async function start() {
     const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
     video.srcObject = stream;
 
+    // Ensure compatibility with Chrome/Safari
+    video.muted = true;
+    video.playsInline = true;
+    video.autoplay = true;
+
     // Show canvas when sharing starts
     canvas.style.display = "";
 
@@ -177,15 +182,19 @@ async function start() {
         requestAnimationFrame(render);
     }
 
-    // Use canplay event to start rendering when video is ready
-    video.oncanplay = () => {
-        render();
-        video.oncanplay = null; // Remove handler after first call
+    // Wait for video metadata, then play and render
+    video.onloadedmetadata = () => {
+        video.play().then(() => {
+            render();
+        });
+        video.onloadedmetadata = null;
     };
 
-    // If video is already ready, start rendering immediately
-    if (video.readyState >= 3) { // HAVE_FUTURE_DATA
-        render();
+    // If video is already ready, play and render immediately
+    if (video.readyState >= 1) { // HAVE_METADATA
+        video.play().then(() => {
+            render();
+        });
     }
 }
 
