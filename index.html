@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bellingcat Colour Highlighter</title>
+  <link rel="stylesheet" href="main.css">
+</head>
+<body>
+  <div id="container">
+    <div id="control-pane">
+      <div style="text-align:center;">
+        <img src="assets/logo.svg" alt="Logo" style="width: 100%; max-width: 160px; margin-bottom: 18px; display: block; margin-left: auto; margin-right: auto;">
+        <h3>Colour Highlighter</h1>
+    </div>
+    <p>
+        Click 'Start Capture' below and select the window or screen you want to highlight.
+    </p>
+      <button id="startBtn">Start Capture</button>
+      <div>
+        <div style="margin-bottom:6px;">Select Highlighter:</div>
+        <button class="lut-btn" data-lut="none">Original</button>
+        <button class="lut-btn active" data-lut="blue-isolated.png">Blue</button>
+        <button class="lut-btn" data-lut="red-isolated.png">Red</button>
+        <button class="lut-btn" data-lut="green-isolated.png">Green</button>
+      </div>
+    </div>
+    <canvas id="glcanvas"></canvas>
+  </div>
+  <video id="video" autoplay muted playsinline style="display:none;"></video>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
