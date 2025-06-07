@@ -3,6 +3,7 @@ import { filterConfigs } from "./configs.js";
 const canvas = document.getElementById("glcanvas");
 const gl = canvas.getContext("webgl");
 const video = document.getElementById("video");
+// const welcomeWin = document.getElementById("welcomeWin");
 
 // Hide canvas initially
 canvas.style.display = "none";
@@ -228,6 +229,10 @@ async function setFilter(config) {
 
 // Start screen capture and render loop
 async function start() {
+    if (welcomeWin) welcomeWin.style.display = "none";
+    canvas.style.display = "block";
+    canvas.style.position = "relative";
+    canvas.style.zIndex = "10";
     const stream = await navigator.mediaDevices.getDisplayMedia({
       video: {
         frameRate: { ideal: 60, max: 60 }
@@ -241,11 +246,15 @@ async function start() {
     video.autoplay = true;
 
     // Show canvas when sharing starts
-    canvas.style.display = "";
+    canvas.style.display = "block";
+    canvas.style.position = "relative";
+    canvas.style.zIndex = "10";
 
     // Hide canvas when sharing stops
     stream.getVideoTracks()[0].addEventListener("ended", () => {
         canvas.style.display = "none";
+            if (welcomeWin) welcomeWin.style.display = "flex"; // show welcomeWin again
+
     });
 
     const { videoTexture, checkVideoAspect } = await initGL();
@@ -298,14 +307,14 @@ async function start() {
 }
 
 // Button event listeners
-document.getElementById("startBtn").addEventListener("click", () => {
-    start();
-});
+const startBtn = document.getElementById("startBtn");
+if (startBtn) startBtn.addEventListener("click", () => start());
 
-// Remove the hardcoded button selection logic and instead generate buttons dynamically
-const filterBar = document.querySelector("#filterButtons"); // The div containing the filter buttons
+const welcomeBtn = document.getElementById("welcomeBtn");
+if (welcomeBtn) welcomeBtn.addEventListener("click", () => start());
 
 // Remove all existing filter buttons (if any)
+const filterBar = document.querySelector("#filterButtons");
 filterBar.querySelectorAll(".lut-btn").forEach(btn => btn.remove());
 
 // Dynamically create filter buttons from filterConfigs
@@ -324,4 +333,4 @@ filterConfigs.forEach((filter, idx) => {
 });
 
 // Optionally, set initial config on load
-setFilter(filterConfigs.find(f => f.id === "blue")); // Blue as default
+setFilter(filterConfigs.find(f => f.id === "original")); // Original as default

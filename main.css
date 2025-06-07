@@ -45,3 +45,44 @@ html {
     width: 100%;
     height: 100%;
 }
+#welcomeWin {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    background: #fff; /* white background */
+}
+
+#welcomeWin .welcome-text {
+    margin-bottom: 32px;
+    font-size: 1.3rem;
+    color: #111;      /* black text */
+    text-align: center;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+}
+
+#welcomeWin button {
+    background: rgb(251, 180, 0);
+    color: black;
+    outline: none;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.05rem;
+    padding: 13px 38px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+    margin: 0 auto;
+    display: block;
+}
+#welcomeWin button:hover, #welcomeWin button:focus {
+    background: #fff5e1;
+    color: #333;
+    box-shadow: 0 3px 16px rgba(251,180,0,0.17);
+}
+
