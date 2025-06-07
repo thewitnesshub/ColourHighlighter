@@ -12,16 +12,31 @@ html {
     width: 100vw;
 }
 #control-pane {
-    width: 220px;
+    position: fixed;
+    top: 32px;
+    left: 32px;
+    right: auto;
+    min-width: 220px;
+    max-width: 320px;
     background: #222;
     color: #fff;
-    padding: 24px 12px;
+    padding: 24px 18px;
     box-sizing: border-box;
+    border-radius: 16px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.24);
     display: flex;
     flex-direction: column;
     gap: 18px;
-    z-index: 2;
+    z-index: 20;
+    opacity: 0.98;
+    transition: left 0.33s cubic-bezier(.6,-0.28,.74,.05), right 0.33s cubic-bezier(.6,-0.28,.74,.05);
 }
+
+#control-pane.right {
+    left: auto;
+    right: 32px;
+}
+
 #control-pane button {
     margin: 2px;
     padding: 8px 12px;
@@ -33,12 +48,14 @@ html {
     cursor: pointer;
     transition: background 0.2s;
 }
+
 #control-pane button.active,
 #control-pane button:focus {
     background: rgb(251, 180, 0);
     color: black;
     outline: none;
 }
+
 #glcanvas {
     flex: 1;
     display: block;
