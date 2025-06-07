@@ -1,9 +1,26 @@
+import { filterConfigs } from "./configs.js";
+
 const canvas = document.getElementById("glcanvas");
 const gl = canvas.getContext("webgl");
 const video = document.getElementById("video");
 
 // Hide canvas initially
 canvas.style.display = "none";
+
+// Add FPS counter to the DOM
+let fpsDiv = document.createElement('div');
+fpsDiv.id = 'fpsCounter';
+fpsDiv.style.position = 'fixed';
+fpsDiv.style.top = '5px';
+fpsDiv.style.right = '10px';
+fpsDiv.style.color = 'white';
+fpsDiv.style.background = 'rgba(0,0,0,0.7)';
+fpsDiv.style.padding = '3px 10px';
+fpsDiv.style.fontSize = '16px';
+fpsDiv.style.fontFamily = 'monospace';
+fpsDiv.style.zIndex = 99;
+fpsDiv.textContent = 'FPS: 0';
+document.body.appendChild(fpsDiv);
 
 // Resize canvas to fill screen
 function resizeCanvas() {
@@ -27,7 +44,7 @@ async function loadShaderFromFile(file, type) {
     return shader;
 }
 
-let currentLUT = "LUTs/blue-isolated.png";
+let currentLUT = "LUTs/red-isolated.png";
 let lutTexture = null;
 let lutImage = null;
 let lutLocation = null;
@@ -99,6 +116,10 @@ async function initGL() {
     video.addEventListener("loadedmetadata", updateScale);
     updateScale();
 
+    // --- Aspect ratio correction: Track video dimensions ---
+    let lastVideoWidth = video.videoWidth;
+    let lastVideoHeight = video.videoHeight;
+
     // Quad
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -145,10 +166,17 @@ async function initGL() {
     const videoLocation = gl.getUniformLocation(program, "u_video");
     gl.uniform1i(videoLocation, 0); // texture unit 0
 
-    return { videoTexture };
+    // Aspect correction callback for render loop
+    function checkVideoAspect() {
+        if (video.videoWidth !== lastVideoWidth || video.videoHeight !== lastVideoHeight) {
+            lastVideoWidth = video.videoWidth;
+            lastVideoHeight = video.videoHeight;
+            updateScale();
+        }
+    }
+
+    return { videoTexture, checkVideoAspect };
 }
-
-
 
 // Helper to fill arrays to length 4 with defaults
 function fillArray(arr, def, len = 4) {
@@ -200,7 +228,11 @@ async function setFilter(config) {
 
 // Start screen capture and render loop
 async function start() {
-    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: {
+        frameRate: { ideal: 60, max: 60 }
+      }
+    });
     video.srcObject = stream;
 
     // Ensure compatibility with Chrome/Safari
@@ -216,9 +248,16 @@ async function start() {
         canvas.style.display = "none";
     });
 
-    const { videoTexture } = await initGL();
+    const { videoTexture, checkVideoAspect } = await initGL();
+
+    // --- FPS COUNTER ---
+    let lastTime = performance.now();
+    let frames = 0;
+    let fps = 0;
 
     function render() {
+        checkVideoAspect(); // <-- Aspect ratio fix
+
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, videoTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, video);
@@ -229,6 +268,16 @@ async function start() {
         }
 
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+        // FPS counter logic
+        frames++;
+        const now = performance.now();
+        if (now - lastTime > 1000) {
+            fps = frames;
+            frames = 0;
+            lastTime = now;
+            fpsDiv.textContent = `FPS: ${fps}`;
+        }
         requestAnimationFrame(render);
     }
 
@@ -276,6 +325,3 @@ filterConfigs.forEach((filter, idx) => {
 
 // Optionally, set initial config on load
 setFilter(filterConfigs.find(f => f.id === "blue")); // Blue as default
-
-// Import filterConfigs from configs.js
-import { filterConfigs } from "./configs.js";
