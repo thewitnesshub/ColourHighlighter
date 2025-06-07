@@ -3,12 +3,19 @@ import { filterConfigs } from "./configs.js";
 const canvas = document.getElementById("glcanvas");
 const gl = canvas.getContext("webgl");
 const video = document.getElementById("video");
-// const welcomeWin = document.getElementById("welcomeWin");
+const welcomeWin = document.getElementById("welcomeWin");
+const controlPane = document.getElementById("control-pane");
+const fab = document.getElementById("fab");
+const minimizePanelBtn = document.getElementById("minimizePanelBtn");
 
-// Hide canvas initially
-canvas.style.display = "none";
+// On load: Hide control pane and FAB
+if (controlPane) controlPane.style.display = "none";
+if (fab) {
+    fab.classList.remove("show");
+    fab.style.display = "none";
+}
 
-// Add FPS counter to the DOM
+// FPS counter
 let fpsDiv = document.createElement('div');
 fpsDiv.id = 'fpsCounter';
 fpsDiv.style.position = 'fixed';
@@ -65,7 +72,7 @@ async function loadLUTTexture(lutFile) {
         lutTexture = gl.createTexture();
     }
     lutImage = new Image();
-    lutImage.src = lutFile.startsWith("LUTs/") || lutFile === "none" ? lutFile : "LUTs/" + lutFile;
+    lutImage.src = lutFile && !lutFile.startsWith("LUTs/") && lutFile !== "none" ? "LUTs/" + lutFile : lutFile;
     await lutImage.decode();
 
     gl.activeTexture(gl.TEXTURE1);
@@ -227,9 +234,34 @@ async function setFilter(config) {
     }
 }
 
+// --- Minimize/Restore logic ---
+function minimizePanel() {
+    controlPane.classList.add("minimized");
+    setTimeout(() => {
+        controlPane.style.display = "none";
+        fab.style.display = "flex";
+        fab.classList.add("show");
+    }, 220); // match CSS transition
+}
+
+function restorePanel() {
+    fab.classList.remove("show");
+    setTimeout(() => {
+        fab.style.display = "none";
+        controlPane.style.display = "flex";
+        setTimeout(() => controlPane.classList.remove("minimized"), 5); // allow layout to happen
+    }, 170);
+}
+
 // Start screen capture and render loop
 async function start() {
     if (welcomeWin) welcomeWin.style.display = "none";
+    // Show panel, hide FAB
+    controlPane.style.display = "flex";
+    controlPane.classList.remove("minimized");
+    fab.classList.remove("show");
+    fab.style.display = "none";
+
     canvas.style.display = "block";
     canvas.style.position = "relative";
     canvas.style.zIndex = "10";
@@ -240,21 +272,10 @@ async function start() {
     });
     video.srcObject = stream;
 
-    // Ensure compatibility with Chrome/Safari
-    video.muted = true;
-    video.playsInline = true;
-    video.autoplay = true;
-
-    // Show canvas when sharing starts
-    canvas.style.display = "block";
-    canvas.style.position = "relative";
-    canvas.style.zIndex = "10";
-
-    // Hide canvas when sharing stops
+    // Hide canvas and show welcomeWin when sharing stops
     stream.getVideoTracks()[0].addEventListener("ended", () => {
         canvas.style.display = "none";
-            if (welcomeWin) welcomeWin.style.display = "flex"; // show welcomeWin again
-
+        if (welcomeWin) welcomeWin.style.display = "flex";
     });
 
     const { videoTexture, checkVideoAspect } = await initGL();
@@ -265,7 +286,7 @@ async function start() {
     let fps = 0;
 
     function render() {
-        checkVideoAspect(); // <-- Aspect ratio fix
+        checkVideoAspect();
 
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, videoTexture);
@@ -298,7 +319,6 @@ async function start() {
         video.onloadedmetadata = null;
     };
 
-    // If video is already ready, play and render immediately
     if (video.readyState >= 1) { // HAVE_METADATA
         video.play().then(() => {
             render();
@@ -306,12 +326,17 @@ async function start() {
     }
 }
 
-// Button event listeners
+// Start capture button(s)
 const startBtn = document.getElementById("startBtn");
-if (startBtn) startBtn.addEventListener("click", () => start());
-
+if (startBtn) startBtn.addEventListener("click", start);
 const welcomeBtn = document.getElementById("welcomeBtn");
-if (welcomeBtn) welcomeBtn.addEventListener("click", () => start());
+if (welcomeBtn) welcomeBtn.addEventListener("click", start);
+
+// Minimize panel button in the panel itself
+if (minimizePanelBtn) minimizePanelBtn.addEventListener("click", minimizePanel);
+
+// FAB click restores the panel
+if (fab) fab.addEventListener("click", restorePanel);
 
 // Remove all existing filter buttons (if any)
 const filterBar = document.querySelector("#filterButtons");
@@ -328,9 +353,10 @@ filterConfigs.forEach((filter, idx) => {
         filterBar.querySelectorAll(".lut-btn").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         await setFilter(filter);
+        // No minimizePanel() here: only the hamburger/minimize button does it
     });
     filterBar.appendChild(btn);
 });
 
 // Optionally, set initial config on load
-setFilter(filterConfigs.find(f => f.id === "original")); // Original as default
+setFilter(filterConfigs.find(f => f.id === "blue"));
