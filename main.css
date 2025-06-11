@@ -12,9 +12,9 @@ html {
     width: 100vw;
 }
 #control-pane {
-    position: fixed;
-    top: 32px;
-    right: 32px;
+    position: relative;
+    /* top: 32px; */
+    /* right: 32px; */
     min-width: 220px;
     max-width: 320px;
     background: #222;

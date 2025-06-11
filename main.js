@@ -8,27 +8,48 @@ const controlPane = document.getElementById("control-pane");
 const fab = document.getElementById("fab");
 const minimizePanelBtn = document.getElementById("minimizePanelBtn");
 
+// --- Picture-in-Picture Button ---
+let pipBtn = document.createElement("button");
+pipBtn.textContent = "Pop Out";
+pipBtn.style.margin = "10px 0";
+pipBtn.style.background = "#fba400";
+pipBtn.style.color = "#111";
+pipBtn.style.fontWeight = "bold";
+pipBtn.style.border = "none";
+pipBtn.style.borderRadius = "8px";
+pipBtn.style.padding = "8px 20px";
+pipBtn.style.cursor = "pointer";
+pipBtn.style.fontSize = "1rem";
+pipBtn.style.transition = "background 0.2s";
+pipBtn.addEventListener("mouseover", () => pipBtn.style.background = "#fff5e1");
+pipBtn.addEventListener("mouseout", () => pipBtn.style.background = "#fba400");
+pipBtn.addEventListener("click", async () => {
+    if (video.readyState === 0) return; // not loaded yet
+    if (document.pictureInPictureElement) {
+        document.exitPictureInPicture();
+    } else {
+        try {
+            await video.requestPictureInPicture();
+        } catch (e) {
+            alert("Picture-in-Picture is not supported or video not available yet.");
+        }
+    }
+});
+// Insert after filter buttons
+setTimeout(() => {
+    let filterBar = document.getElementById("filterButtons");
+    if (filterBar && !document.getElementById("pipBtn")) {
+        pipBtn.id = "pipBtn";
+        filterBar.appendChild(pipBtn);
+    }
+}, 200);
+
 // On load: Hide control pane and FAB
 if (controlPane) controlPane.style.display = "none";
 if (fab) {
     fab.classList.remove("show");
     fab.style.display = "none";
 }
-
-// FPS counter
-let fpsDiv = document.createElement('div');
-fpsDiv.id = 'fpsCounter';
-fpsDiv.style.position = 'fixed';
-fpsDiv.style.top = '5px';
-fpsDiv.style.right = '10px';
-fpsDiv.style.color = 'white';
-fpsDiv.style.background = 'rgba(0,0,0,0.7)';
-fpsDiv.style.padding = '3px 10px';
-fpsDiv.style.fontSize = '16px';
-fpsDiv.style.fontFamily = 'monospace';
-fpsDiv.style.zIndex = 99;
-fpsDiv.textContent = 'FPS: 0';
-document.body.appendChild(fpsDiv);
 
 // Resize canvas to fill screen
 function resizeCanvas() {
@@ -52,7 +73,8 @@ async function loadShaderFromFile(file, type) {
     return shader;
 }
 
-let currentLUT = "LUTs/red-isolated.png";
+let currentFilter = null;
+let currentLUT = null;
 let lutTexture = null;
 let lutImage = null;
 let lutLocation = null;
@@ -66,7 +88,6 @@ let u_ckey_color = null, u_ckey_similarity = null, u_ckey_smoothness = null, u_c
 let u_ccor_gamma = null, u_ccor_contrast = null, u_ccor_saturation = null;
 let lutEnabled = true;
 
-// Add support for enabling/disabling LUT in the shader
 async function loadLUTTexture(lutFile) {
     if (!lutTexture) {
         lutTexture = gl.createTexture();
@@ -232,6 +253,7 @@ async function setFilter(config) {
         gl.uniform1i(lutLocation, 1);
         gl.uniform1i(u_enableLUT, 1);
     }
+    updateSlidersUI(config);
 }
 
 // --- Minimize/Restore logic ---
@@ -241,7 +263,7 @@ function minimizePanel() {
         controlPane.style.display = "none";
         fab.style.display = "flex";
         fab.classList.add("show");
-    }, 220); // match CSS transition
+    }, 220);
 }
 
 function restorePanel() {
@@ -249,14 +271,121 @@ function restorePanel() {
     setTimeout(() => {
         fab.style.display = "none";
         controlPane.style.display = "flex";
-        setTimeout(() => controlPane.classList.remove("minimized"), 5); // allow layout to happen
+        setTimeout(() => controlPane.classList.remove("minimized"), 5);
     }, 170);
 }
 
-// Start screen capture and render loop
+function updateSlidersUI(config) {
+    let slidersBox = document.getElementById("slidersBox");
+    if (!slidersBox) {
+        slidersBox = document.createElement("div");
+        slidersBox.id = "slidersBox";
+        slidersBox.style.margin = "16px 0";
+        controlPane.appendChild(slidersBox);
+    }
+    slidersBox.innerHTML = "";
+
+    (config.chromaKeys || []).forEach((ckey, idx) => {
+        slidersBox.appendChild(makeSlider(
+            `Chroma Similarity #${idx + 1}`,
+            ckey.ckey_similarity,
+            0.0,
+            0.2,
+            0.001,
+            val => {
+                currentFilter.chromaKeys[idx].ckey_similarity = parseFloat(val);
+                setFilter(currentFilter);
+            }
+        ));
+        slidersBox.appendChild(makeSlider(
+            `Chroma Smoothness #${idx + 1}`,
+            ckey.ckey_smoothness,
+            0.0,
+            100.0,
+            0.1,
+            val => {
+                currentFilter.chromaKeys[idx].ckey_smoothness = parseFloat(val);
+                setFilter(currentFilter);
+            }
+        ));
+        slidersBox.appendChild(makeSlider(
+            `Chroma Spill #${idx + 1}`,
+            ckey.ckey_spill,
+            0.0,
+            400.0,
+            1.0,
+            val => {
+                currentFilter.chromaKeys[idx].ckey_spill = parseFloat(val);
+                setFilter(currentFilter);
+            }
+        ));
+    });
+
+    (config.colorCorrections || []).forEach((ccor, idx) => {
+        slidersBox.appendChild(makeSlider(
+            `Gamma #${idx + 1}`,
+            ccor.gamma,
+            -2.0,
+            2.0,
+            0.01,
+            val => {
+                currentFilter.colorCorrections[idx].gamma = parseFloat(val);
+                setFilter(currentFilter);
+            }
+        ));
+        slidersBox.appendChild(makeSlider(
+            `Contrast #${idx + 1}`,
+            ccor.contrast,
+            -2.0,
+            2.0,
+            0.01,
+            val => {
+                currentFilter.colorCorrections[idx].contrast = parseFloat(val);
+                setFilter(currentFilter);
+            }
+        ));
+        slidersBox.appendChild(makeSlider(
+            `Saturation #${idx + 1}`,
+            ccor.saturation,
+            0.0,
+            4.0,
+            0.01,
+            val => {
+                currentFilter.colorCorrections[idx].saturation = parseFloat(val);
+                setFilter(currentFilter);
+            }
+        ));
+    });
+}
+
+function makeSlider(label, value, min, max, step, onChange) {
+    const wrapper = document.createElement("div");
+    wrapper.style.marginBottom = "10px";
+    const lbl = document.createElement("label");
+    lbl.textContent = `${label}: `;
+    lbl.style.fontSize = "0.96em";
+    const valSpan = document.createElement("span");
+    valSpan.textContent = value;
+    lbl.appendChild(valSpan);
+
+    const input = document.createElement("input");
+    input.type = "range";
+    input.min = min;
+    input.max = max;
+    input.step = step;
+    input.value = value;
+    input.style.width = "100%";
+    input.oninput = (e) => {
+        valSpan.textContent = e.target.value;
+        onChange(e.target.value);
+    };
+    wrapper.appendChild(lbl);
+    wrapper.appendChild(input);
+    return wrapper;
+}
+
 async function start() {
     if (welcomeWin) welcomeWin.style.display = "none";
-    // Show panel, hide FAB
     controlPane.style.display = "flex";
     controlPane.classList.remove("minimized");
     fab.classList.remove("show");
@@ -280,11 +409,6 @@ async function start() {
 
     const { videoTexture, checkVideoAspect } = await initGL();
 
-    // --- FPS COUNTER ---
-    let lastTime = performance.now();
-    let frames = 0;
-    let fps = 0;
-
     function render() {
         checkVideoAspect();
 
@@ -299,19 +423,9 @@ async function start() {
 
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-        // FPS counter logic
-        frames++;
-        const now = performance.now();
-        if (now - lastTime > 1000) {
-            fps = frames;
-            frames = 0;
-            lastTime = now;
-            fpsDiv.textContent = `FPS: ${fps}`;
-        }
         requestAnimationFrame(render);
     }
 
-    // Wait for video metadata, then play and render
     video.onloadedmetadata = () => {
         video.play().then(() => {
             render();
@@ -319,30 +433,25 @@ async function start() {
         video.onloadedmetadata = null;
     };
 
-    if (video.readyState >= 1) { // HAVE_METADATA
+    if (video.readyState >= 1) {
         video.play().then(() => {
             render();
         });
     }
 }
 
-// Start capture button(s)
 const startBtn = document.getElementById("startBtn");
 if (startBtn) startBtn.addEventListener("click", start);
 const welcomeBtn = document.getElementById("welcomeBtn");
 if (welcomeBtn) welcomeBtn.addEventListener("click", start);
 
-// Minimize panel button in the panel itself
 if (minimizePanelBtn) minimizePanelBtn.addEventListener("click", minimizePanel);
 
-// FAB click restores the panel
 if (fab) fab.addEventListener("click", restorePanel);
 
-// Remove all existing filter buttons (if any)
 const filterBar = document.querySelector("#filterButtons");
 filterBar.querySelectorAll(".lut-btn").forEach(btn => btn.remove());
 
-// Dynamically create filter buttons from filterConfigs
 filterConfigs.forEach((filter, idx) => {
     const btn = document.createElement("button");
     btn.className = "lut-btn";
@@ -352,11 +461,13 @@ filterConfigs.forEach((filter, idx) => {
     btn.addEventListener("click", async () => {
         filterBar.querySelectorAll(".lut-btn").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
-        await setFilter(filter);
-        // No minimizePanel() here: only the hamburger/minimize button does it
+        currentFilter = JSON.parse(JSON.stringify(filter));
+        currentLUT = currentFilter.lut;
+        await setFilter(currentFilter);
     });
     filterBar.appendChild(btn);
 });
 
-// Optionally, set initial config on load
-setFilter(filterConfigs.find(f => f.id === "blue"));
+currentFilter = JSON.parse(JSON.stringify(filterConfigs.find(f => f.id === "blue")));
+currentLUT = currentFilter.lut;
+setFilter(currentFilter);

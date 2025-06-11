@@ -21,7 +21,11 @@ export const filterConfigs = [
         lut: "LUTs/red-isolated.png",
         enableLUT: true,
         chromaKeys: [],
-        colorCorrections: []
+        colorCorrections: [
+            {
+            saturation: 2.4
+            }
+        ]
     },
     {
         id: "green",
@@ -31,6 +35,36 @@ export const filterConfigs = [
         chromaKeys: [],
         colorCorrections: []
     },
+    {
+    id: "red-full",
+    name: "Red+ (LUT + Color Correction + Chroma Key)",
+    lut: "LUTs/red-isolated.png",
+    enableLUT: true,
+    chromaKeys: [
+        // Both target reds—add both so it works for both shades at once!
+        {
+            ckey_color: [187/255, 115/255, 91/255],  // #bb735b
+            ckey_similarity: 30.0 / 255.0,
+            ckey_smoothness: 10.0,
+            ckey_spill: 200.0
+        },
+        {
+            ckey_color: [113/255, 75/255, 79/255],  // #714b4f
+            ckey_similarity: 30.0 / 255.0,
+            ckey_smoothness: 10.0,
+            ckey_spill: 200.0
+        }
+    ],
+    colorCorrections: [
+        {
+            gamma: 0.0,
+            contrast: 0.13,      // increase or decrease as desired
+            brightness: 0.0493,     // add more if you want it brighter
+            saturation: 2.4     // boost reds for punch
+        }
+    ]
+},
+
     {
         id: "blue-enhanced",
         name: "Blue+",
@@ -72,7 +106,6 @@ export const filterConfigs = [
                 brightness: 0.0493,
                 saturation: 3.3
             },
-
         ]
     },
     {
